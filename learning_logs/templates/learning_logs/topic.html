@@ -2,6 +2,9 @@
 
 {% block page_header %}
   <h3>{{ topic }} </h3>
+  {% if user.username == topic.owner.username %}
+    <small><a href="{% url 'learning_logs:edit_topic' topic.id %}">edit</a></small>
+  {% endif %}
 {% endblock page_header %}
 
 {% block content %}

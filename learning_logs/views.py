@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
+from django.db.models import Q
 
 from .models import Topic, Entry
 from .forms import TopicForm, EntryForm
@@ -14,7 +15,9 @@ def index(request):
 @login_required
 def topics(request):
     """Show all topics."""
-    topics = Topic.objects.filter(owner=request.user).order_by('date_added')
+    topics = Topic.objects.filter(
+        Q(owner=request.user) | Q(public=True)
+        ).order_by('date_added')
     context = {'topics': topics}
     return render(request, 'learning_logs/topics.html', context)
 
@@ -24,7 +27,7 @@ def topic(request, topic_id):
     """Show a single topic and all its entries."""
     topic = get_object_or_404(Topic, id=topic_id)
     # Make sure the topic belongs to the current user.
-    if not check_topic_owner(topic, request):
+    if not (check_topic_owner(topic, request) or topic.public):
         raise Http404
     entries = topic.entry_set.order_by('-date_added')
     context = {'topic': topic, 'entries': entries}
@@ -49,6 +52,27 @@ def new_topic(request):
     # Display a blank or invalid form.
     context = {'form': form}
     return render(request, 'learning_logs/new_topic.html', context)
+
+
+@login_required
+def edit_topic(request, topic_id):
+    """Edit an existing topic"""
+    topic = get_object_or_404(Topic, id=topic_id)
+
+    if not check_topic_owner(topic, request):
+        raise Http404
+    if request.method != 'POST':
+        # Initial request; pre-fill form with the current topic.
+        form = TopicForm(instance=topic)
+    else:
+        # POST data submitted.
+        form = TopicForm(instance=topic, data=request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('learning_logs:topic', topic_id=topic.id)
+
+    context = {'topic': topic, 'form': form}
+    return render(request, 'learning_logs/edit_topic.html', context)
 
 
 @login_required
