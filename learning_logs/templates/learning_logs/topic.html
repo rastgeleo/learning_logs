@@ -9,7 +9,9 @@
 
 {% block content %}
 <p>
+  {% if user.username == topic.owner.username %}
   <a href="{% url 'learning_logs:new_entry' topic.id %}">+ Add new entry</a>
+  {% endif %}
 </p>
 
 {% for entry in entries %}
